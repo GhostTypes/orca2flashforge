@@ -31,3 +31,14 @@ The conversion ensures the printer correctly recognizes the following info:
 <img width="608" height="582" alt="image" src="https://github.com/user-attachments/assets/9919c016-2519-42c0-8c43-81dd26662fb5" />
 
 Save settings. The script will automatically run after every slice.
+
+## Example
+This file was sliced by OrcaSlicer *without* the post-process script, and lacks filament usage, eta, and more
+> The ETA shows as the current time
+<img width="340" height="239" alt="image" src="https://github.com/user-attachments/assets/7b580a56-6271-4311-bb9d-790f463b4b34" />
+
+This file was passed through the post-process script, allowing the printer and other programs to fetch/display the correct information
+> The ETA is correctly calculated, and filament information is populated
+<img width="333" height="166" alt="image" src="https://github.com/user-attachments/assets/33a12f31-8b44-43e7-b5cc-cc854862d7eb" />
+
+
