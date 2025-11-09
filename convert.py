@@ -3,13 +3,18 @@
 Post-processing script for OrcaSlicer to convert G-code format to match Orca-FlashForge
 This ensures proper ETA display on FlashForge printers and API compatibility
 
-Usage: Add this script to OrcaSlicer's post-processing scripts
-The script will automatically restructure the G-code file format
+Includes optional Spaghetti Detector insertion.
+
+Usage: Add this script to OrcaSlicer's post-processing scripts.
 """
 
 import sys
 import os
 from typing import Tuple
+
+# ---------------- CONFIG ----------------
+enable_spaghetti_detector = True  # Enable/Disable the spaghetti detector (default: True)
+# ----------------------------------------
 
 def extract_sections(gcode_content: str) -> Tuple[str, str, str, str, str]:
     """
@@ -99,6 +104,29 @@ def extract_sections(gcode_content: str) -> Tuple[str, str, str, str, str]:
         '\n'.join(config_block)
     )
 
+def add_spaghetti_detector(executable_gcode: str) -> str:
+    """
+    Insert M981 commands for spaghetti detector if enabled.
+    Looks for OrcaSlicer comments like '; filament start gcode' and '; filament end gcode'.
+    """
+    if not enable_spaghetti_detector:
+        return executable_gcode
+
+    lines = executable_gcode.split('\n')
+    new_lines = []
+
+    for line in lines:
+        stripped = line.strip().lower()
+
+        if "; filament start gcode" in stripped:
+            new_lines.append("M981 S1 P20000 ; Enable spaghetti detector")
+        elif "; filament end gcode" in stripped:
+            new_lines.append("M981 S0 P20000 ; Disable spaghetti detector")
+
+        new_lines.append(line)
+
+    return '\n'.join(new_lines)
+
 def restructure_gcode(input_file: str) -> str:
     """
     Restructure G-code from OrcaSlicer format to Orca-FlashForge format
@@ -113,6 +141,9 @@ def restructure_gcode(input_file: str) -> str:
     
     # Extract sections
     header_block, thumbnail_block, executable_gcode, metadata, config_block = extract_sections(content)
+
+    # Optionally add spaghetti detector
+    executable_gcode = add_spaghetti_detector(executable_gcode)
     
     # Build new structure following Orca-FlashForge format:
     # 1. Header block
@@ -123,37 +154,28 @@ def restructure_gcode(input_file: str) -> str:
     
     restructured_parts = []
     
-    # 1. Header block
     if header_block.strip():
         restructured_parts.append(header_block)
-        restructured_parts.append("")  # Empty line for spacing
+        restructured_parts.append("")  # spacing
     
-    # 2. Metadata (the crucial part for ETA display)
     if metadata.strip():
         restructured_parts.append(metadata)
-        restructured_parts.append("")  # Empty line for spacing
+        restructured_parts.append("")
     
-    # 3. Config block
     if config_block.strip():
         restructured_parts.append(config_block)
-        restructured_parts.append("")  # Empty line for spacing
+        restructured_parts.append("")
     
-    # 4. Thumbnail block
     if thumbnail_block.strip():
         restructured_parts.append(thumbnail_block)
-        restructured_parts.append("")  # Empty line for spacing
+        restructured_parts.append("")
     
-    # 5. Executable G-code
     if executable_gcode.strip():
         restructured_parts.append(executable_gcode)
     
     return '\n'.join(restructured_parts)
 
 def main():
-    """
-    Main function for post-processing script
-    """
-    
     if len(sys.argv) < 2:
         print("Usage: python convert.py <gcode_file>")
         sys.exit(1)
@@ -164,7 +186,7 @@ def main():
         print(f"Error: File {gcode_file} does not exist")
         sys.exit(1)
     
-    print(f"Converting G-code format: {gcode_file}")
+    print(f"[OrcaPost] Converting G-code: {gcode_file}")
     
     # Create backup
     backup_file = gcode_file + ".backup"
@@ -172,34 +194,35 @@ def main():
         with open(gcode_file, 'r', encoding='utf-8') as src:
             with open(backup_file, 'w', encoding='utf-8') as dst:
                 dst.write(src.read())
-        print(f"Backup created: {backup_file}")
+        print(f"[OrcaPost] Backup created: {backup_file}")
     except Exception as e:
-        print(f"Warning: Could not create backup: {e}")
+        print(f"[OrcaPost] Warning: Could not create backup: {e}")
     
     # Restructure the file
     restructured_content = restructure_gcode(gcode_file)
     
     if restructured_content is None:
-        print("Error: Failed to restructure G-code")
+        print("[OrcaPost] Error: Failed to restructure G-code")
         sys.exit(1)
     
     # Write the restructured content back to the original file
     try:
         with open(gcode_file, 'w', encoding='utf-8') as f:
             f.write(restructured_content)
-        print(f"Successfully converted {gcode_file} to Orca-FlashForge format")
-        print("ETA and metadata should now be properly displayed on FlashForge printer and API")
+        print(f"[OrcaPost] ✅ Successfully converted {gcode_file} to Orca-FlashForge format")
+        if enable_spaghetti_detector:
+            print("[OrcaPost] Spaghetti detector commands added ✅")
+        print("[OrcaPost] ETA and metadata should now display correctly on FlashForge printers")
     except Exception as e:
-        print(f"Error writing file {gcode_file}: {e}")
-        # Try to restore backup
+        print(f"[OrcaPost] Error writing file {gcode_file}: {e}")
         if os.path.exists(backup_file):
             try:
                 with open(backup_file, 'r', encoding='utf-8') as src:
                     with open(gcode_file, 'w', encoding='utf-8') as dst:
                         dst.write(src.read())
-                print("Restored original file from backup")
+                print("[OrcaPost] Restored original file from backup")
             except:
-                print("Failed to restore backup - manual intervention required")
+                print("[OrcaPost] Failed to restore backup - manual intervention required")
         sys.exit(1)
 
 if __name__ == "__main__":

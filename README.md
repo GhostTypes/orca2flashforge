@@ -17,6 +17,13 @@ The conversion ensures the printer correctly recognizes the following info:
 - **Temperature Settings** - Nozzle and bed temperatures
 - **Printer Configuration** - All slicer settings and parameters
 
+### Optional Features
+
+- **Spaghetti Detector Integration** (default on):  
+  Adds the subroutine calls into the `.gcode`, triggered by `; filament start gcode` and `; filament end gcode` (default in OrcaSlicer).  
+  While this behavior runs by default, it can be toggled via a simple flag within the script.
+
+
 ## Installation
 
 1. Clone or download this repository
