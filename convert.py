@@ -5,10 +5,14 @@ This ensures proper ETA display on FlashForge printers and API compatibility
 
 Usage: Add this script to OrcaSlicer's post-processing scripts
 The script will automatically restructure the G-code file format
+
+Optional: Use --add-md5 flag to add MD5 checksum for forge-x firmware compatibility
 """
 
 import sys
 import os
+import argparse
+import hashlib
 from typing import Tuple
 
 def extract_sections(gcode_content: str) -> Tuple[str, str, str, str, str]:
@@ -149,23 +153,81 @@ def restructure_gcode(input_file: str) -> str:
     
     return '\n'.join(restructured_parts)
 
+def add_md5_checksum(gcode_file: str) -> bool:
+    """
+    Add MD5 checksum to the beginning of the G-code file for forge-x firmware compatibility.
+
+    This prepends "; MD5:[hash]" to the file, which allows the forge-x firmware to verify
+    file integrity before printing, preventing issues from corrupted files.
+
+    Args:
+        gcode_file: Path to the G-code file
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Read the entire file content
+        with open(gcode_file, 'rb') as f:
+            file_content = f.read()
+
+        # Calculate MD5 hash
+        md5_hash = hashlib.md5(file_content).hexdigest()
+
+        # Create the MD5 comment line
+        md5_line = f"; MD5:{md5_hash}\n"
+
+        # Prepend MD5 to the file content
+        new_content = md5_line.encode('utf-8') + file_content
+
+        # Write back to the file
+        with open(gcode_file, 'wb') as f:
+            f.write(new_content)
+
+        print(f"MD5 checksum added: {md5_hash}")
+        return True
+
+    except Exception as e:
+        print(f"Error adding MD5 checksum: {e}")
+        return False
+
 def main():
     """
     Main function for post-processing script
     """
-    
-    if len(sys.argv) < 2:
-        print("Usage: python convert.py <gcode_file>")
-        sys.exit(1)
-    
-    gcode_file = sys.argv[1]
-    
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description='Post-processing script for OrcaSlicer to convert G-code format to Orca-FlashForge',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s file.gcode                    # Convert format only
+  %(prog)s file.gcode --add-md5          # Convert format and add MD5 checksum
+  %(prog)s file.gcode -m                 # Short form for MD5
+        """
+    )
+    parser.add_argument('gcode_file', help='Path to the G-code file to process')
+    parser.add_argument('--add-md5', '-m', action='store_true',
+                        help='Add MD5 checksum for forge-x firmware compatibility')
+
+    # Parse arguments (support both argparse and OrcaSlicer's positional args)
+    if len(sys.argv) == 2 and not sys.argv[1].startswith('-'):
+        # OrcaSlicer only passes filename, no flags
+        args = parser.parse_args([sys.argv[1]])
+    else:
+        args = parser.parse_args()
+
+    gcode_file = args.gcode_file
+
     if not os.path.exists(gcode_file):
         print(f"Error: File {gcode_file} does not exist")
         sys.exit(1)
-    
+
     print(f"Converting G-code format: {gcode_file}")
-    
+    if args.add_md5:
+        print("MD5 checksum generation: ENABLED")
+
     # Create backup
     backup_file = gcode_file + ".backup"
     try:
@@ -175,14 +237,14 @@ def main():
         print(f"Backup created: {backup_file}")
     except Exception as e:
         print(f"Warning: Could not create backup: {e}")
-    
+
     # Restructure the file
     restructured_content = restructure_gcode(gcode_file)
-    
+
     if restructured_content is None:
         print("Error: Failed to restructure G-code")
         sys.exit(1)
-    
+
     # Write the restructured content back to the original file
     try:
         with open(gcode_file, 'w', encoding='utf-8') as f:
@@ -201,6 +263,13 @@ def main():
             except:
                 print("Failed to restore backup - manual intervention required")
         sys.exit(1)
+
+    # Add MD5 checksum if requested
+    if args.add_md5:
+        print("\nAdding MD5 checksum for forge-x firmware...")
+        if not add_md5_checksum(gcode_file):
+            print("Warning: Failed to add MD5 checksum, but file conversion was successful")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
