@@ -27,11 +27,6 @@ jobs:
             echo "Continuing anyway with: $VERSION"
           fi
 
-      - name: Create zip archive
-        run: |
-          zip -j orca2flashforge-${{ inputs.version }}.zip convert.py
-          echo "Created orca2flashforge-${{ inputs.version }}.zip"
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -60,13 +55,7 @@ jobs:
             # Convert format and add MD5 checksum for forge-x firmware
             ./convert.py file.gcode --add-md5
             ```
-
-            ### Files
-
-            - `convert.py` - The conversion script
-            - `orca2flashforge-${{ inputs.version }}.zip` - Zipped version for convenience
           files: |
             convert.py
-            orca2flashforge-${{ inputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
