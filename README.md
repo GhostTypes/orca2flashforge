@@ -5,7 +5,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.6+-blue?style=for-the-badge&logo=python&logoColor=white">
-  <img src="https://img.shields.io/github/license/GhostTypes/orca2flashforge?style=for-the-badge">
   <img src="https://img.shields.io/github/stars/GhostTypes/orca2flashforge?style=for-the-badge">
   <img src="https://img.shields.io/github/forks/GhostTypes/orca2flashforge?style=for-the-badge">
 </p>
