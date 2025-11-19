@@ -1,0 +1,61 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Warning: Version doesn't match semantic versioning (vX.Y.Z)"
+            echo "Continuing anyway with: $VERSION"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Orca2FlashForge Converter ${{ inputs.version }}
+
+            Post-processing script for OrcaSlicer to convert G-code format to match Orca-FlashForge.
+            This ensures proper ETA display on FlashForge printers and API compatibility.
+
+            ### Installation
+
+            1. Download `convert.py` below
+            2. Make it executable: `chmod +x convert.py`
+            3. Add to OrcaSlicer's post-processing scripts
+
+            ### Usage
+
+            ```bash
+            # Convert format only
+            ./convert.py file.gcode
+
+            # Convert format and add MD5 checksum for forge-x firmware
+            ./convert.py file.gcode --add-md5
+            ```
+          files: |
+            convert.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
